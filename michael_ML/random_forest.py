@@ -4,59 +4,236 @@ import matplotlib.pyplot as plt
 import math
 import random
 
-###########################################################################################
+class Random_Forest():
+    def __init__(self, name, dataset, feature_type, class_col) -> None:
+        self.name = name
+        self.class_col = class_col
+        self.feature_type = feature_type
 
-# Decision Tree with Information Gain
+        print('Starting Random Forest')
+        print('Preprocessing data...')
+
+        self.data, self.class_label = self.df_to_array(dataset, class_col)
+        self.class_count = len(self.class_label)
+
+        self.stratified_data = self.k_fold_stratified(10)
+
+        print('Done preproccessing data')
+        print('Training forest...')
+
+        ntree_values, accuracy, f1 = self.train()
+
+        print('Done training forest')
+        print('Graphing results...')
+
+    def df_to_array(self, data_df, class_col):
+        data = []
+        classes = []
+        for index, row in data_df.iterrows():
+            instance_data = {}
+            for key, value in row.items():
+                instance_data[key] = value
+                if key == class_col:
+                    if value not in classes:
+                        classes.append(value)
+            data.append(instance_data)
+        random.shuffle(data)
+        return np.array(data), np.array(classes)
+    
+    def bootstrap_data(self, data): 
+        result_data = []
+        for i in range(len(data)):
+            result_data.append(data[random.randint(0, len(data) - 1)])
+        return np.array(result_data)
+
+    def k_fold_stratified(self, k):
+        k_folds = [[] for _ in range(k)]
+        data_group = [[] for _ in range(self.class_count)]
+
+        for i in range(len(self.data)):
+            class_index = np.where(self.class_label == self.data[i].get(self.class_col))[0][0]
+            data_group[class_index].append(self.data[i])
+
+        for j in range(len(data_group)):
+            fold_size = math.ceil(len(data_group[j]) / k)
+            for n in range(k):
+                start_index = n * fold_size
+                end_index = start_index + fold_size
+                k_folds[n].extend(data_group[j][start_index : end_index])
+                
+        return k_folds
+    
+    def train(self):
+        ntree_values = [5, 15, 25]
+
+        accuracy = []
+        f1 = []
+
+        table = pd.DataFrame([], columns=['ntree', 'accuracy', 'F1'])
+
+        for ntree in ntree_values:
+            ntree_accuracy = []
+            ntree_f1 = []
+
+            for i in range(len(self.stratified_data)):
+                training = self.stratified_data[:i] + self.stratified_data[i + 1:]
+                training = [element for sub_array in training for element in sub_array]
+
+                testing = self.stratified_data[i]
+
+                forest = []
+                forest_accuracy = []
+                forest_f1 = []
+
+                for _ in range(ntree):
+                    bootstrap_training = self.bootstrap_data(training)
+                    tree = Decision_Tree_Info_Gain(training, bootstrap_training, self.feature_type, self.class_label, self.class_col, 0.85)
+                    forest.append(tree)
+                
+                for tree in forest:
+                    true_predictions = [0 for _ in range(self.class_count)]
+                    false_predictions = [0 for _ in range(self.class_count)]
+                    for n in range(len(testing)):
+                        prediction = tree.classify(testing[n])
+                        index = np.where(self.class_label == prediction)[0][0]
+                        if testing[n].get(self.class_col) == prediction:
+                            true_predictions[index] += 1
+                        else:
+                            false_predictions[index] += 1
+
+                    tree_accuracy, tree_f1 = self.compute_stats(true_predictions, false_predictions, len(testing))
+
+                    forest_accuracy.append(tree_accuracy)
+                    forest_f1.append(tree_f1)
+                
+                forest_mean_accuracy = np.mean(forest_accuracy)
+                forest_mean_f1 = np.mean(forest_f1)
+
+                ntree_accuracy.append(forest_mean_accuracy)
+                ntree_f1.append(forest_mean_f1)
+
+            ntree_mean_accuracy = np.mean(ntree_accuracy)
+            ntree_mean_f1 = np.mean(ntree_f1)
+
+            accuracy.append(ntree_mean_accuracy)
+            f1.append(ntree_mean_f1)
+
+            new_data = {
+                'ntree': ntree,
+                'accuracy': ntree_mean_accuracy,
+                'F1': ntree_mean_f1
+            }
+
+            table.loc[len(table)] = new_data
+        
+        table.to_csv('./tables/' + self.name + '_table.csv', index=False)
+    
+        return ntree_values, accuracy, f1
+                
+    def compute_stats(self, true_values, false_values, data_size):
+        accuracy = np.sum(true_values) / data_size
+
+        if self.class_count == 2:
+            if true_values[0] + false_values[0] == 0:
+                precision = 0
+            else:
+                precision = true_values[0] / (true_values[0] + false_values[0])
+            
+            if true_values[0] + false_values[1] == 0:
+                recall = 0
+            else:
+                recall = true_values[0] / (true_values[0] + false_values[1])
+        else:
+            false_values_sum = np.sum(false_values)
+            precision = 0
+            recall = 0
+
+            for i in range(self.class_count):
+                if true_values[i] + false_values[i] == 0:
+                    precision = 0
+                else:
+                    precision += true_values[i] / (true_values[i] + false_values[i])
+                if true_values[i] + (false_values_sum - false_values[i]) == 0:
+                    recall = 0
+                else:
+                    recall += true_values[i] / (true_values[i] + (false_values_sum - false_values[i]))
+            
+            precision /= self.class_count
+            recall /= self.class_count
+
+        if precision + recall == 0:
+            f1 = 0
+        else:
+            f1 = 2 * (precision * recall) / (precision + recall)
+        
+        return accuracy, f1
+
+    def plot_result(self, ntree_values, accuracy, f1):
+        plt.plot(ntree_values, accuracy, marker='o')
+        plt.xlabel("ntree Values")
+        plt.ylabel("Accuracy")
+        plt.title(self.name + ' Accuracy')
+        plt.savefig('./figures/' + self.name + ' accuracy')
+        plt.clf()
+
+        plt.plot(ntree_values, f1, marker='o')
+        plt.xlabel("ntree Values")
+        plt.ylabel("F1 score")
+        plt.title(self.name + ' F1')
+        plt.savefig('./figures/' + self.name + ' f1')
+        plt.clf()
+
 class Decision_Tree_Info_Gain():
 
-    def __init__(self, data, original, attributes, label, class_label, prob_limit, minimal_size_split, m):
-        # The label column of the data
-        self.original_data = original
-        self.label_col = label
+    def __init__(self, training_data, bootstrap_training_data, feature_type, class_label, class_col, prob_limit) -> None:
+        self.original = training_data
+        self.data = bootstrap_training_data
+        self.feature_type = feature_type
+        self.class_label = class_label
+        self.class_count = len(self.class_label)
+        self.class_col = class_col
         self.prob_limit = prob_limit
-        self.minimal_size = minimal_size_split
-        self.m = m
-        # The root of the decision tree
-        self.root = self.build_tree(data, attributes, class_label)
+        self.m = math.ceil(math.sqrt(len(feature_type)))
+
+        self.root = self.build_tree(self.data, self.feature_type)
 
     # Get the probability of the class labels
-    def get_probability(self, data, class_label):
-        label_prob = [0] * len(class_label)
-        if len(data) == 0:
-            return label_prob
+    def get_probability(self, data):
+        class_prob = np.array([0 for _ in range(self.class_count)], dtype='float64')
 
-        for row in data:
-            for i in range(len(class_label)):
-                if row[self.label_col] == class_label[i]:
-                    label_prob[i] += 1
+        if len(data) == 0:
+            return class_prob
+
+        for instance in data:
+            for i in range(self.class_count):
+                if instance.get(self.class_col) == self.class_label[i]:
+                    class_prob[i] += 1
                     break
             
-        for i in range(len(label_prob)):
-            label_prob[i] /= len(data)
-
-        return label_prob
+        class_prob /= len(data)
+        return class_prob
     
-    def select_attributes(self, attributes, m):
-        selected_attribute = []
-        copy_attributes = attributes.copy()
+    def select_features(self, features):
+        selected_features = []
+        temp_copy = features.copy()
 
-        for i in range(m):
-            if not copy_attributes:
+        for i in range(self.m):
+            if not temp_copy:
                 break
 
-            attribute_index = random.randint(0, len(copy_attributes) - 1)
-            random_attribute = copy_attributes[attribute_index]
-            selected_attribute.append(random_attribute)
-            copy_attributes.pop(attribute_index)
+            attribute_index = random.randint(0, len(temp_copy) - 1)
+            random_attribute = temp_copy[attribute_index]
+            selected_features.append(random_attribute)
+            temp_copy.pop(attribute_index)
 
-        return selected_attribute
+        return selected_features
     
     # Get entropy of the data
-    def entropy(self, data, class_label):
-        data_prob = self.get_probability(data, class_label)
+    def entropy(self, data):
+        class_prob = self.get_probability(data)
         entro_log_sum = 0
 
-        for prob in data_prob:
+        for prob in class_prob:
             if prob == 0:
                 return 0
             entro_log_sum += prob * math.log(prob, 2)
@@ -70,109 +247,108 @@ class Decision_Tree_Info_Gain():
         return parent_entropy - child_entropy
     
     # Finding the best split among the attributes and the values
-    def best_split(self, data, attributes, class_label):
-        parent_entropy = self.entropy(data, class_label)
+    def best_split(self, data, features):
+        parent_entropy = self.entropy(data)
         split_values = []
-        attribute_split = None
+        feature_split = None
         data_type = None
         split_branches = []
-        max_info_gain = 0
+        max_info_gain = -1
 
         # Looping through each attribute
-        for index, attribute_data in enumerate(attributes):
-            attribute = attribute_data[0]
-            attribute_type = attribute_data[1]
-            attribute_values = set()
+        for feature, feature_type in features:
+            feature_values = set()
 
             # For numerical attributes
-            if attribute_type == 'n':
-                data.sort(key = lambda x:x[attribute])
+            if feature_type == 'n':
+                data = sorted(data, key=lambda x: x.get(feature))
+
                 for i in range(len(data) - 1):
-                    value = (data[i][attribute] + data[i + 1][attribute]) / 2
-                    attribute_values.add(value)
+                    instance = (data[i].get(feature) + data[i + 1].get(feature)) / 2
+                    feature_values.add(instance)
                 
-                for attribute_value in attribute_values:
+                for feature_value in feature_values:
                     branches = [[] for _ in range(2)]
                     left = branches[0]
                     right = branches[1]
 
-                    for data_value in data:
-                        if data_value[attribute] <= attribute_value:
-                            left.append(data_value)
+                    for instance in data:
+                        if instance.get(feature) <= feature_value:
+                            left.append(instance)
                         else:
-                            right.append(data_value)
+                            right.append(instance)
                     
-                    total_length = len(data)
-                    probabilities = [len(left) / total_length, len(right) / total_length]
-                    entropies = [self.entropy(left, class_label), self.entropy(right, class_label)]
+                    data_size = len(data)
+                    probabilities = [len(left) / data_size, len(right) / data_size]
+                    entropies = [self.entropy(left), self.entropy(right)]
                     info_gain = self.info_gain(parent_entropy, probabilities, entropies)
 
                     if info_gain > max_info_gain:
                         max_info_gain = info_gain
-                        split_values = [attribute_value]
-                        attribute_split = attribute
-                        data_type = 'n'
+                        split_values = [feature_value]
+                        feature_split = feature
+                        data_type = feature_type
                         split_branches = branches
             # For categorical attributes
             else:
-                for value in self.original_data:
-                    attribute_values.add(value[attribute])
+                for instance in self.original:
+                    feature_values.add(instance.get(feature))
                 
-                attribute_values = list(attribute_values)
+                feature_values = list(feature_values)
             
-                branches = [[] for _ in range(len(attribute_values))]
-                total_length = len(data)
+                branches = [[] for _ in range(len(feature_values))]
+                data_size = len(data)
 
-                for data_value in data:
-                    branch_index = attribute_values.index(data_value[attribute])
-                    branches[branch_index].append(data_value)
+                for instance in data:
+                    branch_index = feature_values.index(instance.get(feature))
+                    branches[branch_index].append(instance)
                 
                 probabilities = []
                 entropies = []
                 
                 for branch in branches:
-                    probabilities.append(len(branch) / total_length)
-                    entropies.append(self.entropy(branch, class_label))
+                    probabilities.append(len(branch) / data_size)
+                    entropies.append(self.entropy(branch))
                 
                 info_gain = self.info_gain(parent_entropy, probabilities, entropies)
 
                 if info_gain > max_info_gain:
                     max_info_gain = info_gain
-                    split_values = attribute_values
-                    attribute_split = attribute
-                    data_type = 'c'
+                    split_values = feature_values
+                    feature_split = feature
+                    data_type = feature_type
                     split_branches = branches
 
-        return attribute_split, split_values, data_type, split_branches
+        return feature_split, split_values, data_type, split_branches
     
-    def build_tree(self, data, attributes, class_label):
-        data_probability = self.get_probability(data, class_label)
+    def build_tree(self, data, features):
+        class_prob = self.get_probability(data)
 
-        selected_attributes = self.select_attributes(attributes, self.m)
-        best_split = self.best_split(data, selected_attributes, class_label)   
+        selected_features = self.select_features(features)
+        best_split = self.best_split(data, selected_features)   
 
-        attribute_split = best_split[0]
+        feature_split = best_split[0]
         split_values = best_split[1]
-        attribute_type = best_split[2]
+        feature_type = best_split[2]
         split_branches = best_split[3]
 
-        if attribute_split is None or any(prob >= self.prob_limit for prob in data_probability) or any(len(branch) == 0 for branch in split_branches) or len(data) <= self.minimal_size:
+        if feature_split is None or any(prob >= self.prob_limit for prob in class_prob) or any(len(branch) == 0 for branch in split_branches):
 
             predict_label = None
             highest_prob = -1
 
-            for i in range(len(class_label)):
-                if data_probability[i] > highest_prob:
-                    predict_label = class_label[i]
-                    highest_prob = data_probability[i]
+            for i in range(self.class_count):
+                if class_prob[i] > highest_prob:
+                    predict_label = self.class_label[i]
+                    highest_prob = class_prob[i]
 
             return Leaf(predict_label)
 
         children = []
         for branch in split_branches:
-            children.append(self.build_tree(branch, attributes, class_label))
+            children.append(self.build_tree(branch, features))
 
-        return Node(attribute_split, split_values, attribute_type, children)
+        return Node(feature_split, split_values, feature_type, children)
 
     # Classify the data
     def classify(self, data):
@@ -181,22 +357,22 @@ class Decision_Tree_Info_Gain():
 # This is a node that is used to split the data
 class Node():
 
-    def __init__(self, attribute_name, attribute_threshold, attribute_type, children):
-        self.attr_name = attribute_name
-        self.attr_split = attribute_threshold
-        self.attr_type = attribute_type
+    def __init__(self, feature_name, threshold, feature_type, children):
+        self.feature_name = feature_name
+        self.split = threshold
+        self.feature_type = feature_type
         self.children = children
 
     # If less than or equal to then goes to left child, else then goes to right child
     def classify(self, data):
-        test_value = data[self.attr_name]
-        if self.attr_type == 'n':
-            if test_value <= self.attr_split[0]:
+        test_value = data[self.feature_name]
+        if self.feature_type == 'n':
+            if test_value <= self.split[0]:
                 return self.children[0].classify(data)
             else:
                 return self.children[1].classify(data)
         else:
-            attr_index = self.attr_split.index(test_value)
+            attr_index = self.split.index(test_value)
             return self.children[attr_index].classify(data)
 
 # This is a leaf node that is used to predict the class label of the data
@@ -207,153 +383,3 @@ class Leaf():
     
     def classify(self, data):
         return self.predict_class       
-
-# Turn dataframe data into dictionaries inside of a list to easier work with
-def csv_to_list(csv_file):
-    data = []
-    for index, row in csv_file.iterrows():
-        row_data = {}
-        for key, value in row.items():
-            row_data[key] = value
-        data.append(row_data)
-    return data
-
-def get_class_label(data, label):
-    class_label = []
-
-    for value in data:
-        if value.get(label) not in class_label:
-            class_label.append(value.get(label))
-
-    return class_label
-
-# Test the data using random forest
-def test_forest(forest, data, label, class_label):
-    true_values = [0] * len(class_label)
-    false_values = [0] * len(class_label)
-
-    for value in data:
-        majority = None
-        highest_count = 0
-        class_count = [0] * len(class_label)
-
-        for tree in forest:
-            result = tree.classify(value)
-            index = class_label.index(result)
-            class_count[index] += 1
-            if class_count[index] > highest_count:
-                highest_count = class_count[index]
-                majority = result
-        
-        majority_index = class_label.index(majority)
-        if value[label] == majority:
-            true_values[majority_index] += 1
-        else:
-            false_values[majority_index] += 1
-
-    return true_values, false_values
-
-def bootstrap_data(data): 
-    result_data = []
-    for i in range(len(data)):
-        result_data.append(data[random.randint(0, len(data) - 1)])
-    return result_data
-
-def k_fold_stratified(data, k, class_label, label):
-    folds = [[] for _ in range(k)]    
-    data_group = [[] for _ in range(len(class_label))]
-
-    for data_value in data:
-        class_index = class_label.index(data_value[label])
-        data_group[class_index].append(data_value)
-
-    for group in data_group:
-        fold_size = math.ceil(len(group) / k)
-        for i in range(k):
-            start_index = i * fold_size
-            end_index = start_index + fold_size
-            folds[i].extend(group[start_index : end_index])
-
-    return folds
-
-def random_forest(ntree_values, data, attributes, label, class_label, gini):
-    k_folds = k_fold_stratified(data, 10, class_label, label)
-
-    mean_accuracy = []
-    mean_precision = []
-    mean_recall = []
-    mean_f1 = []
-
-    accuracy = [[] for _ in range(len(ntree_values))]
-    precision = [[] for _ in range(len(ntree_values))]
-    recall = [[] for _ in range(len(ntree_values))]
-    f1 = [[] for _ in range(len(ntree_values))]
-    beta = 1
-    beta_square = pow(beta, 2)
-
-    for i in range(len(k_folds)):
-        training = k_folds[:i] + k_folds[i + 1:]
-        training = [element for sub_array in training for element in sub_array]
-        minimal_size_split = 0.05 * len(training)
-        testing = k_folds[i]
-
-        for j in range(len(ntree_values)):
-            ntree = ntree_values[j]
-            forest = []
-
-            for _ in range(ntree):
-                boostrap_training = bootstrap_data(training)
-                if not gini:
-                    tree = Decision_Tree_Info_Gain(boostrap_training, training, attributes, label, class_label, 1, minimal_size_split, int(math.sqrt(len(attributes))))
-                else:
-                    tree = Decision_Tree_Gini(boostrap_training, training, attributes, label, class_label, 1, minimal_size_split, int(math.sqrt(len(attributes))))
-                forest.append(tree)
-            
-            true_values, false_values = test_forest(forest, testing, label, class_label)
-            total_size = len(testing)
-
-            if len(class_label) == 2:
-                true_pos = true_values[0]
-                true_neg = true_values[1]
-                false_pos = false_values[0]
-                false_neg = false_values[1]
-
-                ntree_accuracy = (true_pos + true_neg) / total_size
-                ntree_precision = true_pos / (true_pos + false_pos)
-                ntree_recall = true_pos / (true_pos + false_neg)
-                ntree_f1 = (1 + beta_square) * (ntree_precision * ntree_recall) / ((beta_square * ntree_precision) + ntree_recall)
-            else:
-                ntree_accuracy = sum(true_values) / total_size
-                ntree_precision = 0
-                ntree_recall = 0
-                false_sum = sum(false_values)
-
-                for n in range(len(class_label)):
-                    if true_values[n] == 0:
-                        ntree_precision += 0
-                        ntree_recall += 0
-                    else:
-                        ntree_precision += true_values[n] / (true_values[n] + false_values[n])
-                        ntree_recall += true_values[n] / (true_values[n] + (false_sum - false_values[n]))
-
-                ntree_precision /= len(class_label)
-                ntree_recall /= len(class_label)
-
-                ntree_f1 = (1 + beta_square) * (ntree_precision * ntree_recall) / ((beta_square * ntree_precision) + ntree_recall)
-
-            accuracy[j].append(ntree_accuracy)
-            precision[j].append(ntree_precision)
-            recall[j].append(ntree_recall)
-            f1[j].append(ntree_f1)
-    
-    for i in range(len(ntree_values)):
-        mean_accuracy.append(np.mean(accuracy[i]))
-        mean_precision.append(np.mean(precision[i]))
-        mean_recall.append(np.mean(recall[i]))
-        mean_f1.append(np.mean(f1[i]))
-    
-    return mean_accuracy, mean_precision, mean_recall, mean_f1
-
-###########################################################################################
-ntree_values = [1, 5, 10, 20, 30, 40, 50]
-###########################################################################################

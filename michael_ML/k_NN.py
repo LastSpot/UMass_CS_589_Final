@@ -18,11 +18,11 @@ class K_NN:
         categorical_data = feature_data[categorical_col]
 
         normalized_numerical_data = np.array(self.normalization(numerical_data))
-        categorical_data_transformer = make_column_transformer((OneHotEncoder(), categorical_col), remainder='passthrough')
+        categorical_data_transformer = make_column_transformer((OneHotEncoder(sparse_output=False), categorical_col), remainder='passthrough')
         categorical_data_transformed = categorical_data_transformer.fit_transform(categorical_data[categorical_col])
 
-        class_transformer = make_column_transformer((OneHotEncoder(), [class_col]), remainder='passthrough')
-        class_transformed = class_transformer.fit_transform(class_data[[class_col]])
+        class_transformer = make_column_transformer((OneHotEncoder(sparse_output=False), [class_col]), remainder='passthrough')
+        class_transformed = class_transformer.fit_transform(class_data)
 
         self.feature_data = np.concatenate((normalized_numerical_data, categorical_data_transformed), axis=1)
         self.class_data = class_transformed
@@ -36,8 +36,11 @@ class K_NN:
         best_k, best_accuracy, best_f1, k_values, accuracy_recorded, f1_recorded = self.find_hyperparameters(self.stratified_feature, self.stratified_class)
 
         print('Done finding hyperparameters')
+        print('Graphing...')
 
-        print(best_k, best_accuracy, best_f1)
+        self.plot_results(k_values, accuracy_recorded, f1_recorded)
+
+        print('Done graphing')
 
     def identify_col(self, feature_type):
         categorical_col = []
@@ -176,7 +179,13 @@ class K_NN:
         accuracy_recorded = []
         f1_recorded = []
 
-        for k in range(1, 52, 2):
+        table = pd.DataFrame([], columns=['k', 'accuracy', 'F1'])
+
+        for k in range(1, 52, 10):
+            k_accuracy = []
+            k_f1 = []
+            k_values.append(k)
+
             for i in range(len(feature_data)):
                 training = feature_data[:i] + feature_data[i + 1:]
                 training = [element for sub_array in training for element in sub_array]
@@ -204,14 +213,49 @@ class K_NN:
                         false_predictions[predict_result] += 1
                 
                 accuracy, f1 = self.compute_stats(true_predictions, false_predictions, len(testing))
-
-                k_values.append(k)
-                accuracy_recorded.append(accuracy)
-                f1_recorded.append(f1)
+                k_accuracy.append(accuracy)
+                k_f1.append(f1)
 
                 if accuracy >= best_accuracy and f1 >= best_f1:
                     best_accuracy = accuracy
                     best_f1 = f1
                     best_k = k
         
+            accuracy_recorded.append(np.array(k_accuracy))
+            f1_recorded.append(np.array(k_f1))
+
+            new_data = {
+                'k': k,
+                'accuracy': np.mean(k_accuracy),
+                'F1': np.mean(k_f1)
+            }
+
+            table.loc[len(table)] = new_data
+        
+        table.to_csv('./tables/' + self.name + '_table.csv', index=False)
+
         return best_k, best_accuracy, best_f1, k_values, accuracy_recorded, f1_recorded
+
+    def plot_results(self, k_values, accuracy, f1):
+        mean_accuracy = np.mean(accuracy, axis=1)
+        mean_f1 = np.mean(f1, axis=1)
+        accuracy_std = np.std(accuracy, axis=1)
+        f1_std = np.std(f1, axis=1)
+
+        plt.plot(k_values, mean_accuracy)
+        plt.errorbar(k_values, accuracy, yerr=accuracy_std, fmt='D-k', capsize=3)
+        plt.xlabel('Value of k')
+        plt.ylabel('Accuracy')
+        plt.xlim(0, 52)
+        plt.title(self.name + ' Accuracy')
+        plt.savefig('./figures/' + self.name + '_accuracy graph')
+        plt.clf()
+
+        plt.plot(k_values, mean_f1)
+        plt.errorbar(k_values, accuracy, yerr=f1_std, fmt='D-k', capsize=3)
+        plt.xlabel('Value of k')
+        plt.ylabel('F1 score')
+        plt.xlim(0, 52)
+        plt.title(self.name + ' F1')
+        plt.savefig('./figures/' + self.name + '_f1 graph')
+        plt.clf()

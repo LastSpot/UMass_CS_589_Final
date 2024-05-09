@@ -14,19 +14,19 @@ class Neural_Network:
         print('Starting neural network')
         print('Preprocessing data...')
 
-        categorical_col, numerical_col = self.identify_col(feature_data, feature_type)
+        categorical_col, numerical_col = self.identify_col(feature_type)
         numerical_data = feature_data[numerical_col]
         categorical_data = feature_data[categorical_col]
 
         normalized_numerical_data = np.array(self.normalization(numerical_data))
         vectorized_numerical_data = np.expand_dims(normalized_numerical_data, axis=1)
 
-        categorical_data_transformer = make_column_transformer((OneHotEncoder(), categorical_col), remainder='passthrough')
+        categorical_data_transformer = make_column_transformer((OneHotEncoder(sparse_output=False), categorical_col), remainder='passthrough')
         categorical_data_transformed = categorical_data_transformer.fit_transform(categorical_data[categorical_col])
         vectorized_categorical_data = np.expand_dims(categorical_data_transformed, axis=1)
 
-        label_transformer = make_column_transformer((OneHotEncoder(), [class_col]), remainder='passthrough')
-        label_transformed = label_transformer.fit_transform(class_data[[class_col]])
+        label_transformer = make_column_transformer((OneHotEncoder(sparse_output=False), [class_col]), remainder='passthrough')
+        label_transformed = label_transformer.fit_transform(class_data)
 
         self.data = np.concatenate((vectorized_numerical_data, vectorized_categorical_data), axis=2)
         self.labels = np.expand_dims(label_transformed, axis=1)
@@ -88,7 +88,7 @@ class Neural_Network:
     def k_fold_stratified(self, k):
         data_folds = [[] for _ in range(k)]
         label_folds = [[] for _ in range(k)]
-        data_group = [[] for _ in range(len(self.labels[0][0]))]
+        data_group = [[] for _ in range(self.output_size)]
         label_group = [[] for _ in range(self.output_size)]
 
         for i in range(len(self.data)):
@@ -234,15 +234,14 @@ class Neural_Network:
     def find_best_parameters(self, data, label):
         alphas = [0.6, 0.7, 0.8]
 
-        lambs = [0, 0.1, 0.25, 0.5, 0.75]
+        lambs = [0, 0.1]
 
-        epsilons = [math.pow(math.e, -7), math.pow(math.e, -6)]
+        epsilons = [math.pow(math.e, -7)]
 
-        layers_nums = [1,2,3,4]
+        layers_nums = [1,2,3]
         neurons_per_layer = [[[4], [6]],
-                             [[2, 2], [4, 4], [6, 6]],
-                             [[4, 4, 4]],
-                             [[7, 7, 7, 7]]]
+                             [[2, 2], [4, 4]],
+                             [[4, 4, 4]]]
         
         best_alpha = -1
         best_lamb = -1
@@ -353,7 +352,7 @@ class Neural_Network:
                                 best_accuracy = mean_accuracy
                                 best_f1 = mean_f1
     
-        table.to_csv('./tables/' + self.name + '_experiments_table.csv', index=False)
+        table.to_csv('./tables/' + self.name + '_table.csv', index=False)
 
         filename = self.name + '_parameters.txt'
         file_path = './parameters/' + filename
