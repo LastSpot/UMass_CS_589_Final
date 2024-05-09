@@ -17,7 +17,7 @@ class K_NN:
         numerical_data = feature_data[numerical_col]
         categorical_data = feature_data[categorical_col]
 
-        normalized_numerical_data = np.array(self.normalization(numerical_data))
+        normalized_numerical_data = np.array(self.normalization(numerical_data).fillna(0))
         categorical_data_transformer = make_column_transformer((OneHotEncoder(sparse_output=False), categorical_col), remainder='passthrough')
         categorical_data_transformed = categorical_data_transformer.fit_transform(categorical_data[categorical_col])
 
@@ -182,6 +182,10 @@ class K_NN:
         table = pd.DataFrame([], columns=['k', 'accuracy', 'F1'])
 
         for k in range(1, 52, 10):
+            print()
+            print('k:', k)
+            print()
+            
             k_accuracy = []
             k_f1 = []
             k_values.append(k)

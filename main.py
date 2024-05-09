@@ -46,7 +46,7 @@ loan_feature_type = list(zip(loan_feature_data.columns, loan_feature_type))
 
 loan_class_data = filtered_loan_df[[loan_class_col]]
 
-# k_NN.K_NN('Loan K-NN', loan_feature_data, loan_feature_type, loan_class_data, loan_class_col)
+k_NN.K_NN('Loan K-NN', loan_feature_data, loan_feature_type, loan_class_data, loan_class_col)
 # neural_network.Neural_Network('Loan Neural Network', loan_feature_data, loan_feature_type, loan_class_data, loan_class_col)
 # random_forest.Random_Forest('Loan Random Forest', filtered_loan_df, loan_feature_type, loan_class_col)
 #####################################################################################

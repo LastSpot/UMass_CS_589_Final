@@ -17,8 +17,8 @@ class Neural_Network:
         categorical_col, numerical_col = self.identify_col(feature_type)
         numerical_data = feature_data[numerical_col]
         categorical_data = feature_data[categorical_col]
-
-        normalized_numerical_data = np.array(self.normalization(numerical_data))
+        
+        normalized_numerical_data = np.array(self.normalization(numerical_data).fillna(0))
         vectorized_numerical_data = np.expand_dims(normalized_numerical_data, axis=1)
 
         categorical_data_transformer = make_column_transformer((OneHotEncoder(sparse_output=False), categorical_col), remainder='passthrough')
@@ -234,7 +234,7 @@ class Neural_Network:
     def find_best_parameters(self, data, label):
         alphas = [0.6, 0.7, 0.8]
 
-        lambs = [0, 0.1]
+        lambs = [0, 0.1, 0.25]
 
         epsilons = [math.pow(math.e, -7)]
 
@@ -260,6 +260,12 @@ class Neural_Network:
                     for i in range(len(layers_nums)):
                         possible_neurons = neurons_per_layer[i]
                         for neurons in possible_neurons:
+                            print()
+                            print('alpha:', alpha)
+                            print('lambda:', lamb)
+                            print('epsilon:', epsilon)
+                            print('neurons:', neurons)
+                            print()
 
                             self.hidden_layers = self.generate_hidden(layers_nums[i], neurons)
 
@@ -391,6 +397,10 @@ class Neural_Network:
         self.generate_gradients()
 
         while x < len(training_data):
+            print()
+            print('number of instances:', x)
+            print()
+            
             train = True
             training = training_data[prev_x : x]
             label = training_label[prev_x : x]

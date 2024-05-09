@@ -74,10 +74,15 @@ class Random_Forest():
         table = pd.DataFrame([], columns=['ntree', 'accuracy', 'F1'])
 
         for ntree in ntree_values:
+            print()
+            print('ntree:', ntree)
+            print()
+            
             ntree_accuracy = []
             ntree_f1 = []
 
             for i in range(len(self.stratified_data)):
+                print('fold:', i + 1, end='\r')
                 training = self.stratified_data[:i] + self.stratified_data[i + 1:]
                 training = [element for sub_array in training for element in sub_array]
 
