@@ -14,9 +14,9 @@ digits_feature_type = list(zip(digits_feature_df.columns, digits_feature_type))
 
 digits_class_df = pd.DataFrame(digits_class_data, columns=['digit'])
 
-# k_NN.K_NN('Digits K-NN', digits_feature_df, digits_feature_type, digits_class_df, digits_class_col)
-# neural_network.Neural_Network('Digits Neural Network', digits_feature_df, digits_feature_type, digits_class_df, digits_class_col)
-# random_forest.Random_Forest('Digits Random Forest', pd.concat((digits_feature_df, digits_class_df), axis=1), digits_feature_type, digits_class_col)
+k_NN.K_NN('Digits K-NN', digits_feature_df, digits_feature_type, digits_class_df, digits_class_col)
+neural_network.Neural_Network('Digits Neural Network', digits_feature_df, digits_feature_type, digits_class_df, digits_class_col)
+random_forest.Random_Forest('Digits Random Forest', pd.concat((digits_feature_df, digits_class_df), axis=1), digits_feature_type, digits_class_col)
 #####################################################################################
 titanic_file = './data/titanic.csv'
 titanic_df = pd.read_csv(titanic_file)
@@ -30,9 +30,9 @@ titanic_feature_type = list(zip(titanic_feature_data.columns, titanic_feature_ty
 
 titanic_class_data = filtered_titanic_df[[titanic_class_col]]
 
-# k_NN.K_NN('Titanic K-NN', titanic_feature_data, titanic_feature_type, titanic_class_data, titanic_class_col)
+k_NN.K_NN('Titanic K-NN', titanic_feature_data, titanic_feature_type, titanic_class_data, titanic_class_col)
 neural_network.Neural_Network('Titanic Neural Network', titanic_feature_data, titanic_feature_type, titanic_class_data, titanic_class_col)
-# random_forest.Random_Forest('Titanic Random Forest', filtered_titanic_df, titanic_feature_type, titanic_class_col)
+random_forest.Random_Forest('Titanic Random Forest', filtered_titanic_df, titanic_feature_type, titanic_class_col)
 #####################################################################################
 loan_file = './data/loan.csv'
 loan_df = pd.read_csv(loan_file)
@@ -46,9 +46,9 @@ loan_feature_type = list(zip(loan_feature_data.columns, loan_feature_type))
 
 loan_class_data = filtered_loan_df[[loan_class_col]]
 
-# k_NN.K_NN('Loan K-NN', loan_feature_data, loan_feature_type, loan_class_data, loan_class_col)
+k_NN.K_NN('Loan K-NN', loan_feature_data, loan_feature_type, loan_class_data, loan_class_col)
 neural_network.Neural_Network('Loan Neural Network', loan_feature_data, loan_feature_type, loan_class_data, loan_class_col)
-# random_forest.Random_Forest('Loan Random Forest', filtered_loan_df, loan_feature_type, loan_class_col)
+random_forest.Random_Forest('Loan Random Forest', filtered_loan_df, loan_feature_type, loan_class_col)
 #####################################################################################
 parkinson_file = './data/parkinsons.csv'
 parkinson_df = pd.read_csv(parkinson_file)
@@ -60,6 +60,6 @@ parkinson_feature_type = list(zip(parkinson_feature_data.columns, parkinson_feat
 
 parkinson_class_data = parkinson_df[[parkinson_class_col]]
 
-# k_NN.K_NN('Parkinson K-NN', parkinson_feature_data, parkinson_feature_type, parkinson_class_data, parkinson_class_col)
-# neural_network.Neural_Network('Parkinson Neural Network', parkinson_feature_data, parkinson_feature_type, parkinson_class_data, parkinson_class_col)
-# random_forest.Random_Forest('Parkinson Random Forest', parkinson_df, parkinson_feature_type, parkinson_class_col)
+k_NN.K_NN('Parkinson K-NN', parkinson_feature_data, parkinson_feature_type, parkinson_class_data, parkinson_class_col)
+neural_network.Neural_Network('Parkinson Neural Network', parkinson_feature_data, parkinson_feature_type, parkinson_class_data, parkinson_class_col)
+random_forest.Random_Forest('Parkinson Random Forest', parkinson_df, parkinson_feature_type, parkinson_class_col)
