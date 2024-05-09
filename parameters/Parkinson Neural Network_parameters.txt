@@ -1,0 +1,7 @@
+Alpha: 0.6 
+Lambda: 0 
+Epsilon: 1e-7 
+Number of hidden layer: 2 
+Number of neurons in hidden layers: [4, 4] 
+Accuracy: 0.8700000000000001 
+F1 score: 0.7101948051948052 

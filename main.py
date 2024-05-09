@@ -14,9 +14,9 @@ digits_feature_type = list(zip(digits_feature_df.columns, digits_feature_type))
 
 digits_class_df = pd.DataFrame(digits_class_data, columns=['digit'])
 
-# k_NN.K_NN('Digits k-NN', digits_feature_df, digits_feature_type, digits_class_df, digits_class_col)
-# neural_network.Neural_Network('digits neural network', digits_feature_df, digits_feature_type, digits_class_df, digits_class_col)
-random_forest.Random_Forest('Digits Random Forest', pd.concat((digits_feature_df, digits_class_df), axis=1), digits_feature_type, digits_class_col)
+# k_NN.K_NN('Digits K-NN', digits_feature_df, digits_feature_type, digits_class_df, digits_class_col)
+# neural_network.Neural_Network('Digits Neural Network', digits_feature_df, digits_feature_type, digits_class_df, digits_class_col)
+# random_forest.Random_Forest('Digits Random Forest', pd.concat((digits_feature_df, digits_class_df), axis=1), digits_feature_type, digits_class_col)
 #####################################################################################
 titanic_file = './data/titanic.csv'
 titanic_df = pd.read_csv(titanic_file)

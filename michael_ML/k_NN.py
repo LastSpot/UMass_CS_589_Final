@@ -243,7 +243,7 @@ class K_NN:
         f1_std = np.std(f1, axis=1)
 
         plt.plot(k_values, mean_accuracy)
-        plt.errorbar(k_values, accuracy, yerr=accuracy_std, fmt='D-k', capsize=3)
+        plt.errorbar(k_values, mean_accuracy, yerr=accuracy_std, fmt='D-k', capsize=3)
         plt.xlabel('Value of k')
         plt.ylabel('Accuracy')
         plt.xlim(0, 52)
@@ -252,7 +252,7 @@ class K_NN:
         plt.clf()
 
         plt.plot(k_values, mean_f1)
-        plt.errorbar(k_values, accuracy, yerr=f1_std, fmt='D-k', capsize=3)
+        plt.errorbar(k_values, mean_f1, yerr=f1_std, fmt='D-k', capsize=3)
         plt.xlabel('Value of k')
         plt.ylabel('F1 score')
         plt.xlim(0, 52)

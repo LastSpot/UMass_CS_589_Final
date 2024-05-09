@@ -26,6 +26,8 @@ class Random_Forest():
         print('Done training forest')
         print('Graphing results...')
 
+        self.plot_result(ntree_values, accuracy, f1)
+
     def df_to_array(self, data_df, class_col):
         data = []
         classes = []
@@ -64,7 +66,7 @@ class Random_Forest():
         return k_folds
     
     def train(self):
-        ntree_values = [5, 15, 25]
+        ntree_values = [5, 15, 25, 35]
 
         accuracy = []
         f1 = []
